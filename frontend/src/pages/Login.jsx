@@ -47,6 +47,7 @@ export default function Login() {
         </div>
 
         <form onSubmit={onSubmit} className="card space-y-4 shadow-xl">
+        <form onSubmit={onSubmit} className="card space-y-4 shadow-card-hover">
           {error && (
             <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
               <AlertTriangle className="h-4 w-4 shrink-0" />

@@ -191,6 +191,7 @@ export default function Income() {
                         <div className="flex items-center gap-3">
                           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                             <Icon className="h-4.5 w-4.5" strokeWidth={1.75} />
+                            <Icon className="h-4 w-4" strokeWidth={1.75} />
                           </div>
                           <span>{income.source}</span>
                         </div>

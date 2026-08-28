@@ -30,6 +30,7 @@ export default function Navbar({ onToggleSidebar, sidebarOpen }) {
         <Link to="/" className="flex items-center gap-2.5 md:hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
             <ShieldCheck className="h-4.5 w-4.5" strokeWidth={2} />
+            <ShieldCheck className="h-5 w-5" strokeWidth={2} />
           </div>
           <span className="text-base font-bold text-slate-900 dark:text-white">
             Budget Planner
