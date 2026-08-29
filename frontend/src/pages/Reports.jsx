@@ -8,6 +8,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
+  Pie,
+  PieChart,
 } from "recharts";
 import {
   ArrowDownLeft,
@@ -17,6 +20,9 @@ import {
   AlertTriangle,
   FileText,
   Calendar,
+  Layers,
+  PiggyBank,
+  CircleDollarSign,
 } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import { reportService } from "../services/goalService";
@@ -26,6 +32,17 @@ import SummaryCard from "../components/cards/SummaryCard";
 import CategoryPieChart from "../components/charts/CategoryPieChart";
 import IncomeExpenseChart from "../components/charts/IncomeExpenseChart";
 import { MetricSkeleton, ChartSkeleton } from "../components/common/Skeleton";
+
+const ASSET_COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#eab308",
+  "#64748b",
+];
 
 function CustomTrendTooltip({ active, payload, label, currency }) {
   if (active && payload && payload.length) {
@@ -84,6 +101,14 @@ export default function Reports() {
     load();
   }, [load]);
 
+  const investmentDistribution = (summary?.investments?.distribution || []).map((d, i) => ({
+    name: d.type,
+    value: d.total_invested,
+    color: ASSET_COLORS[i % ASSET_COLORS.length],
+  }));
+
+  const cumulativeSavings = summary?.wallet?.cumulative_savings || summary?.totals?.cumulative_savings || 0;
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
@@ -93,7 +118,7 @@ export default function Reports() {
             Reports & Analytics
           </h1>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Comprehensive financial breakdown for {formatMonth(month)}
+            Comprehensive financial breakdown including spending, investments & savings for {formatMonth(month)}
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -125,7 +150,8 @@ export default function Reports() {
 
       {loading && !summary ? (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <MetricSkeleton />
             <MetricSkeleton />
             <MetricSkeleton />
             <MetricSkeleton />
@@ -155,7 +181,7 @@ export default function Reports() {
             </div>
           )}
 
-          {/* 4 Summary Stat Cards */}
+          {/* 4 Key Financial Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard
               title="Income"
@@ -174,44 +200,111 @@ export default function Reports() {
               tone="negative"
             />
             <SummaryCard
-              title="Savings"
+              title="Investments"
+              numericValue={summary.totals.investments || 0}
+              currency={currency}
+              isCurrency={true}
+              icon={Layers}
+              tone="brand"
+            />
+            <SummaryCard
+              title="Monthly Savings"
               numericValue={summary.totals.savings}
               currency={currency}
               isCurrency={true}
               icon={TrendingUp}
               tone={summary.totals.savings < 0 ? "negative" : "positive"}
             />
-            <SummaryCard
-              title="Remaining"
-              numericValue={summary.totals.remaining}
-              currency={currency}
-              isCurrency={true}
-              icon={Wallet}
-              subtitle="Net monthly surplus"
-              tone={summary.totals.remaining < 0 ? "negative" : "positive"}
-            />
           </div>
 
           {/* Charts Grid */}
           <div className="grid gap-6 lg:grid-cols-2">
+            {/* Category Expenses Breakdown */}
             <CategoryPieChart
               data={summary.category_breakdown}
               currency={currency}
               title="Category Spending Distribution"
             />
-            <IncomeExpenseChart
-              data={trend}
-              currency={currency}
-              title={`Income vs Expenses (Last ${range} Months)`}
-            />
+
+            {/* Investments Asset Allocation Pie Chart */}
+            <div className="card flex flex-col justify-between">
+              <div>
+                <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
+                  Investments Asset Allocation
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Portfolio distribution across asset types
+                </p>
+              </div>
+
+              {investmentDistribution.length === 0 ? (
+                <div className="py-16 text-center text-xs text-slate-400">
+                  No investments recorded for {formatMonth(month)}.
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 items-center gap-4 pt-4">
+                  <div className="h-52 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={investmentDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={70}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {investmentDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(val) => formatCurrency(val, currency)}
+                          contentStyle={{
+                            borderRadius: "12px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "12px",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {investmentDistribution.map((item) => (
+                      <div key={item.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="truncate font-medium text-slate-700 dark:text-slate-300">
+                            {item.name}
+                          </span>
+                        </div>
+                        <span className="font-bold tabular-nums text-slate-900 dark:text-white shrink-0 pl-2">
+                          {formatCurrency(item.value, currency)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Monthly Trend Multi-Line Chart */}
+          {/* Multi-Month Cashflow Trajectory Chart */}
           <div className="card flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-                Multi-Month Cashflow Trajectory
-              </h3>
+              <div>
+                <h3 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
+                  Multi-Month Financial Trajectory (Income, Expenses, Investments & Savings)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Cashflow progression over the last {range} months
+                </p>
+              </div>
             </div>
 
             <div className="mt-4">
@@ -267,8 +360,17 @@ export default function Reports() {
                     />
                     <Line
                       type="monotone"
+                      dataKey="investments"
+                      name="Investments"
+                      stroke="#8b5cf6"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: "#8b5cf6" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    <Line
+                      type="monotone"
                       dataKey="savings"
-                      name="Savings"
+                      name="Monthly Savings"
                       stroke="#6366f1"
                       strokeWidth={2.5}
                       dot={{ r: 3, fill: "#6366f1" }}
@@ -280,16 +382,24 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Historical Breakdown Table */}
+          {/* Comprehensive Monthly Financial Statement Table */}
           <div className="card overflow-x-auto p-0 shadow-card">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Monthly Financial Statement Table
+              </h3>
+              <p className="text-xs text-slate-400">
+                Detailed monthly performance tracking income, spending, investments, and savings
+              </p>
+            </div>
             <table className="w-full text-left">
               <thead className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-900/50">
                 <tr>
                   <th className="table-cell">Month</th>
                   <th className="table-cell text-right">Income</th>
                   <th className="table-cell text-right">Expenses</th>
-                  <th className="table-cell text-right">Savings</th>
-                  <th className="table-cell text-right">Net Remaining</th>
+                  <th className="table-cell text-right">Investments</th>
+                  <th className="table-cell text-right">Saved This Month</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
@@ -307,17 +417,11 @@ export default function Reports() {
                     <td className="table-cell text-right tabular-nums font-semibold text-rose-600 dark:text-rose-400">
                       {formatCurrency(row.expenses, currency)}
                     </td>
-                    <td className="table-cell text-right tabular-nums font-semibold text-indigo-600 dark:text-indigo-400">
-                      {formatCurrency(row.savings, currency)}
+                    <td className="table-cell text-right tabular-nums font-semibold text-purple-600 dark:text-purple-400">
+                      {formatCurrency(row.investments || 0, currency)}
                     </td>
-                    <td
-                      className={`table-cell text-right tabular-nums font-bold ${
-                        row.remaining < 0
-                          ? "text-rose-600 dark:text-rose-400"
-                          : "text-emerald-600 dark:text-emerald-400"
-                      }`}
-                    >
-                      {formatCurrency(row.remaining, currency)}
+                    <td className="table-cell text-right tabular-nums font-bold text-indigo-600 dark:text-indigo-400">
+                      {formatCurrency(row.savings, currency)}
                     </td>
                   </tr>
                 ))}
@@ -329,4 +433,3 @@ export default function Reports() {
     </div>
   );
 }
-

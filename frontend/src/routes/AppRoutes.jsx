@@ -8,8 +8,11 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import Income from "../pages/Income";
+import FixedCommitments from "../pages/FixedCommitments";
 import Expenses from "../pages/Expenses";
 import Budgets from "../pages/Budgets";
+import BillCalendar from "../pages/BillCalendar";
+import Investments from "../pages/Investments";
 import Goals from "../pages/Goals";
 import Reports from "../pages/Reports";
 import Settings from "../pages/Settings";
@@ -33,7 +36,7 @@ function ProtectedLayout({ children }) {
         {sidebarOpen && (
           <div
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-xs md:hidden"
+            className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm md:hidden"
           />
         )}
         <Sidebar open={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
@@ -61,8 +64,11 @@ export default function AppRoutes() {
       <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
       <Route path="/" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
       <Route path="/income" element={<ProtectedLayout><Income /></ProtectedLayout>} />
+      <Route path="/fixed-commitments" element={<ProtectedLayout><FixedCommitments /></ProtectedLayout>} />
       <Route path="/expenses" element={<ProtectedLayout><Expenses /></ProtectedLayout>} />
       <Route path="/budgets" element={<ProtectedLayout><Budgets /></ProtectedLayout>} />
+      <Route path="/calendar" element={<ProtectedLayout><BillCalendar /></ProtectedLayout>} />
+      <Route path="/investments" element={<ProtectedLayout><Investments /></ProtectedLayout>} />
       <Route path="/goals" element={<ProtectedLayout><Goals /></ProtectedLayout>} />
       <Route path="/reports" element={<ProtectedLayout><Reports /></ProtectedLayout>} />
       <Route path="/settings" element={<ProtectedLayout><Settings /></ProtectedLayout>} />

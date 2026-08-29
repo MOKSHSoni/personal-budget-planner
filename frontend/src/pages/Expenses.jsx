@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Plus,
   SlidersHorizontal,
@@ -9,6 +10,8 @@ import {
   X,
   CreditCard,
   Trash2,
+  Lock,
+  ArrowRight,
 } from "lucide-react";
 import useAuth from "../hooks/useAuth";
 import expenseService, { categoryService } from "../services/expenseService";
@@ -25,6 +28,7 @@ import ExpenseCard from "../components/cards/ExpenseCard";
 export default function Expenses() {
   const { currency } = useAuth();
   const [filters, setFilters] = useState({ month: currentMonth(), category_id: "", search: "" });
+  const [typeFilter, setTypeFilter] = useState("all"); // 'all' | 'variable' | 'fixed'
   const [data, setData] = useState({ expenses: [], total: 0 });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,10 +72,12 @@ export default function Expenses() {
     load();
   }, [load]);
 
+  const variableCategories = categories.filter((c) => c.type === "variable");
+
   function openCreate() {
     setEditing(null);
     setForm({
-      category_id: categories[0]?.id ? String(categories[0].id) : "",
+      category_id: variableCategories[0]?.id ? String(variableCategories[0].id) : "",
       amount: "",
       date: toDateInput(new Date()),
       description: "",
@@ -93,7 +99,13 @@ export default function Expenses() {
   }
 
   async function save() {
-    if (!form.category_id) return setFormError("Please choose a category");
+    if (!form.category_id) return setFormError("Please choose a variable spending category");
+    const selectedCat = categories.find((c) => String(c.id) === String(form.category_id));
+    if (selectedCat && selectedCat.type === "fixed") {
+      return setFormError(
+        "Only variable spending can be added here. Fixed commitments (Rent, EMI, Insurance) must be recorded in the Fixed Commitments tab."
+      );
+    }
     if (!(Number(form.amount) > 0)) return setFormError("Amount must be greater than zero");
     setSaving(true);
     setFormError("");
@@ -130,7 +142,7 @@ export default function Expenses() {
     setCatSaving(true);
     setCatError("");
     try {
-      await categoryService.create({ name: catForm.name.trim(), type: catForm.type });
+      await categoryService.create({ name: catForm.name.trim(), type: "variable" });
       setCatForm({ name: "", type: "variable" });
       setCatModalOpen(false);
       await load();
@@ -150,6 +162,16 @@ export default function Expenses() {
       setCatError(getErrorMessage(err));
     }
   }
+
+  const displayedExpenses = data.expenses.filter((exp) => {
+    if (typeFilter === "variable") return exp.category_type !== "fixed";
+    if (typeFilter === "fixed") return exp.category_type === "fixed";
+    return true;
+  });
+
+  const displayedTotal = displayedExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const variableCount = data.expenses.filter((e) => e.category_type !== "fixed").length;
+  const fixedCount = data.expenses.filter((e) => e.category_type === "fixed").length;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -181,9 +203,62 @@ export default function Expenses() {
         </div>
       )}
 
+      {/* Notice Banner for Fixed Commitments */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-gradient-to-r from-slate-50 to-brand-50/40 p-3.5 text-xs text-slate-700 dark:border-slate-800/80 dark:from-slate-900/60 dark:to-brand-950/20 dark:text-slate-300">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/60 dark:text-brand-300">
+            <Lock className="h-3.5 w-3.5" />
+          </div>
+          <span>
+            Looking for <strong>Rent, EMI, or Insurance</strong>? Manage recurring fixed obligations with payment tracking in the new tab.
+          </span>
+        </div>
+        <Link
+          to="/fixed-commitments"
+          className="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 shrink-0"
+        >
+          <span>Go to Fixed Commitments</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+
       {/* Filter Bar & Summary */}
       <div className="grid gap-4 md:grid-cols-12 md:items-center">
-        <div className="card md:col-span-8">
+        <div className="card md:col-span-8 space-y-3">
+          {/* Sub-tabs: All vs Variable vs Fixed */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/60 w-fit">
+            <button
+              onClick={() => setTypeFilter("all")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                typeFilter === "all"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              All ({data.expenses.length})
+            </button>
+            <button
+              onClick={() => setTypeFilter("variable")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                typeFilter === "variable"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              Variable Spending ({variableCount})
+            </button>
+            <button
+              onClick={() => setTypeFilter("fixed")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                typeFilter === "fixed"
+                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              Fixed Commitments ({fixedCount})
+            </button>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-3">
             <Input
               label="Month"
@@ -200,7 +275,7 @@ export default function Expenses() {
               <option value="">All Categories</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {c.name} ({c.type})
                 </option>
               ))}
             </Input>
@@ -219,9 +294,12 @@ export default function Expenses() {
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Filtered Spending
             </p>
-            {(filters.month || filters.category_id || filters.search) && (
+            {(filters.month || filters.category_id || filters.search || typeFilter !== "all") && (
               <button
-                onClick={() => setFilters({ month: "", category_id: "", search: "" })}
+                onClick={() => {
+                  setFilters({ month: "", category_id: "", search: "" });
+                  setTypeFilter("all");
+                }}
                 className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400"
               >
                 Reset
@@ -229,10 +307,10 @@ export default function Expenses() {
             )}
           </div>
           <p className="mt-2 text-2xl font-bold tabular-nums text-rose-600 dark:text-rose-400">
-            <CountUp value={data.total} currency={currency} isCurrency={true} />
+            <CountUp value={displayedTotal} currency={currency} isCurrency={true} />
           </p>
           <p className="mt-0.5 text-xs text-slate-400">
-            {data.expenses.length} transaction{data.expenses.length === 1 ? "" : "s"} found
+            {displayedExpenses.length} transaction{displayedExpenses.length === 1 ? "" : "s"} found
           </p>
         </div>
       </div>
@@ -246,13 +324,13 @@ export default function Expenses() {
             <TransactionRowSkeleton />
             <TransactionRowSkeleton />
           </div>
-        ) : data.expenses.length === 0 ? (
+        ) : displayedExpenses.length === 0 ? (
           <EmptyState
             icon={Receipt}
             title="No expenses found"
             description={
-              filters.search || filters.category_id
-                ? "Try clearing your filters to see more transactions."
+              filters.search || filters.category_id || typeFilter !== "all"
+                ? "Try clearing your filters or changing tabs to see more transactions."
                 : "Record your first expense to begin tracking your spending."
             }
             actionLabel="+ Add Expense"
@@ -260,7 +338,7 @@ export default function Expenses() {
           />
         ) : (
           <div className="grid gap-3">
-            {data.expenses.map((expense) => (
+            {displayedExpenses.map((expense) => (
               <ExpenseCard
                 key={expense.id}
                 expense={expense}
@@ -298,14 +376,14 @@ export default function Expenses() {
           )}
           <Input
             as="select"
-            label="Category"
+            label="Category (Variable Spending Only)"
             value={form.category_id}
             onChange={(e) => setForm({ ...form, category_id: e.target.value })}
           >
-            <option value="">Select a category</option>
-            {categories.map((c) => (
+            <option value="">Select a variable category</option>
+            {variableCategories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.type})
+                {c.name}
               </option>
             ))}
           </Input>
@@ -336,8 +414,8 @@ export default function Expenses() {
       {/* Manage Categories Modal */}
       <Modal
         open={catModalOpen}
-        title="Expense Categories"
-        subtitle="Create or manage custom spending categories"
+        title="Variable Spending Categories"
+        subtitle="Create or manage custom variable spending categories"
         onClose={() => setCatModalOpen(false)}
         footer={
           <Button variant="secondary" onClick={() => setCatModalOpen(false)}>
@@ -351,43 +429,34 @@ export default function Expenses() {
               {catError}
             </p>
           )}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="flex gap-3">
             <Input
-              label="Name"
+              label="New Variable Category Name"
               value={catForm.name}
               onChange={(e) => setCatForm({ ...catForm, name: e.target.value })}
-              className="sm:col-span-1"
-              placeholder="e.g. Health"
+              className="flex-1"
+              placeholder="e.g. Health, Pets, Subscriptions"
             />
-            <Input
-              as="select"
-              label="Type"
-              value={catForm.type}
-              onChange={(e) => setCatForm({ ...catForm, type: e.target.value })}
-            >
-              <option value="fixed">Fixed</option>
-              <option value="variable">Variable</option>
-            </Input>
             <div className="flex items-end">
-              <Button className="w-full" onClick={saveCategory} loading={catSaving}>
+              <Button onClick={saveCategory} loading={catSaving}>
                 <Plus className="h-4 w-4" />
                 <span>Add</span>
               </Button>
             </div>
           </div>
           <ul className="divide-y divide-slate-100 max-h-60 overflow-y-auto dark:divide-slate-800">
-            {categories.map((c) => (
+            {variableCategories.map((c) => (
               <li key={c.id} className="flex items-center justify-between py-2.5 text-xs">
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {c.name}{" "}
-                  <span className="ml-1 text-[11px] font-normal text-slate-400">
-                    ({c.type})
-                  </span>
+                  {c.name}
                 </span>
-                <Button size="sm" variant="danger" onClick={() => deleteCategory(c.id)}>
-                  <Trash2 className="h-3 w-3" />
-                  <span>Delete</span>
-                </Button>
+                <button
+                  onClick={() => deleteCategory(c.id)}
+                  title="Delete category"
+                  className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </li>
             ))}
           </ul>

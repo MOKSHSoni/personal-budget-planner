@@ -13,12 +13,44 @@
 
 const PRIORITY_WEIGHTS = { Low: 1, Medium: 2, High: 3, "Very High": 4 };
 
+const FIXED_INCOME_RATIOS = {
+  emi: 0.20,        // 20% of monthly income (safe debt servicing ratio)
+  insurance: 0.05,  // 5% of monthly income (protection / healthcare allocation)
+  rent: 0.30,       // 30% of monthly income (housing guideline)
+  internet: 0.02,   // 2% of monthly income (connectivity)
+};
+
 function priorityWeight(priority) {
   return PRIORITY_WEIGHTS[priority] || 1;
 }
 
 function round2(n) {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Computes the algorithmic limit benchmark for a fixed category based on monthly income.
+ */
+function getFixedRecommendedLimit(name, income, currentLimit, spent) {
+  const lower = String(name || "").toLowerCase();
+  let ratio = null;
+
+  if (lower.includes("emi") || lower.includes("loan") || lower.includes("mortgage")) {
+    ratio = FIXED_INCOME_RATIOS.emi;
+  } else if (lower.includes("insurance") || lower.includes("policy") || lower.includes("lic")) {
+    ratio = FIXED_INCOME_RATIOS.insurance;
+  } else if (lower.includes("rent") || lower.includes("housing") || lower.includes("flat") || lower.includes("home")) {
+    ratio = FIXED_INCOME_RATIOS.rent;
+  } else if (lower.includes("internet") || lower.includes("wifi") || lower.includes("broadband")) {
+    ratio = FIXED_INCOME_RATIOS.internet;
+  }
+
+  if (ratio !== null && income > 0) {
+    return round2(income * ratio);
+  }
+
+  if (Number(currentLimit) > 0) return Number(currentLimit);
+  return Number(spent) || 0;
 }
 
 /**
@@ -32,16 +64,17 @@ function allocateBudget(totalIncome, categories) {
   const fixed = list.filter((c) => c.type === "fixed");
   const variable = list.filter((c) => c.type !== "fixed");
 
-  // Step 2 — required fixed spend: the user-set monthly limit if present,
-  // otherwise what was actually spent this month.
+  // Step 2 — required fixed spend:
+  // Use user-set monthly limit if present, or algorithmic income-based recommendation.
   let fixedRequiredTotal = 0;
   const fixedAllocations = fixed.map((c) => {
+    const recommended = getFixedRecommendedLimit(c.name, income, c.monthly_limit, c.spent);
     const required = Math.max(
       0,
-      Number(c.monthly_limit) > 0 ? Number(c.monthly_limit) : Number(c.spent) || 0
+      Number(c.monthly_limit) > 0 ? Number(c.monthly_limit) : recommended
     );
     fixedRequiredTotal += required;
-    return { category: c, recommended: required };
+    return { category: c, recommended: required, raw_recommended: recommended };
   });
 
   // Fixed spend can never exceed income in the recommendation.
@@ -126,7 +159,9 @@ function isValidMonth(month) {
 
 module.exports = {
   PRIORITY_WEIGHTS,
+  FIXED_INCOME_RATIOS,
   priorityWeight,
+  getFixedRecommendedLimit,
   allocateBudget,
   calculateSavings,
   validateAmount,

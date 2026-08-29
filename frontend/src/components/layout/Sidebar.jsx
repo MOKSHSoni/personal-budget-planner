@@ -11,6 +11,9 @@ import {
   Moon,
   Sun,
   ShieldCheck,
+  Lock,
+  TrendingUp,
+  Calendar,
 } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
 
@@ -26,12 +29,15 @@ const GROUPS = [
     items: [
       { to: "/income", label: "Income", icon: ArrowDownLeft },
       { to: "/expenses", label: "Expenses", icon: ArrowUpRight },
+      { to: "/fixed-commitments", label: "Fixed Commitments", icon: Lock },
       { to: "/budgets", label: "Budgets", icon: PieChart },
     ],
   },
   {
     title: "Planning",
     items: [
+      { to: "/calendar", label: "Bill Calendar", icon: Calendar },
+      { to: "/investments", label: "Investments", icon: TrendingUp },
       { to: "/goals", label: "Goals", icon: Target },
       { to: "/reports", label: "Reports", icon: BarChart3 },
       { to: "/settings", label: "Settings", icon: Settings },

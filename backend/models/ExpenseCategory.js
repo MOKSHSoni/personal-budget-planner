@@ -2,10 +2,10 @@ const { pool } = require("../config/db");
 
 const DEFAULT_CATEGORIES = [
   { name: "Rent", type: "fixed" },
-  { name: "Electricity", type: "fixed" },
   { name: "Internet", type: "fixed" },
   { name: "EMI", type: "fixed" },
   { name: "Insurance", type: "fixed" },
+  { name: "Electricity", type: "variable" },
   { name: "Food", type: "variable" },
   { name: "Fuel", type: "variable" },
   { name: "Shopping", type: "variable" },

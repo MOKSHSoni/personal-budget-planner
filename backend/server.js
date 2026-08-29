@@ -23,6 +23,8 @@ app.use("/api/expenses", require("./routes/expenseRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/budgets", require("./routes/budgetRoutes"));
 app.use("/api/goals", require("./routes/goalRoutes"));
+app.use("/api/investments", require("./routes/investmentRoutes"));
+app.use("/api/calendar", require("./routes/billCalendarRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));
 
 app.use(notFound);

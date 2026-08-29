@@ -2,6 +2,7 @@ const Budget = require("../models/Budget");
 const Income = require("../models/Income");
 const Expense = require("../models/Expense");
 const ExpenseCategory = require("../models/ExpenseCategory");
+const Investment = require("../models/Investment");
 const { allocateBudget, round2 } = require("../utils/budgetCalculator");
 
 function currentMonth() {
@@ -32,10 +33,47 @@ async function buildCategoryRows(userId, month) {
 async function list(req, res, next) {
   try {
     const month = req.query.month || currentMonth();
-    const rows = await buildCategoryRows(req.user.id, month);
-    const totalIncome = await Income.totalForMonth(req.user.id, month);
+    const [rows, totalIncome, totalInvested, investments] = await Promise.all([
+      buildCategoryRows(req.user.id, month),
+      Income.totalForMonth(req.user.id, month),
+      Investment.totalForMonth(req.user.id, month),
+      Investment.findAllByUser(req.user.id, { month }),
+    ]);
     const plan = allocateBudget(totalIncome, rows);
-    res.json({ month, ...plan, budgets: rows });
+
+    const fixedAllocations = plan.allocations.filter((a) => a.type === "fixed");
+    const variableAllocations = plan.allocations.filter((a) => a.type === "variable");
+
+    const totalFixedSpent = round2(fixedAllocations.reduce((sum, a) => sum + (Number(a.spent) || 0), 0));
+    const totalFixedLimit = round2(fixedAllocations.reduce((sum, a) => sum + (Number(a.monthly_limit) || 0), 0));
+
+    const totalVariableSpent = round2(variableAllocations.reduce((sum, a) => sum + (Number(a.spent) || 0), 0));
+    const totalVariableLimit = round2(variableAllocations.reduce((sum, a) => sum + (Number(a.monthly_limit) || 0), 0));
+
+    const totalExpenses = round2(totalFixedSpent + totalVariableSpent);
+    const totalSaved = round2(totalIncome - totalExpenses);
+    const netSurplus = round2(totalIncome - totalExpenses - totalInvested);
+
+    res.json({
+      month,
+      ...plan,
+      budgets: rows,
+      summary: {
+        total_income: totalIncome,
+        total_fixed_spent: totalFixedSpent,
+        total_fixed_limit: totalFixedLimit,
+        total_variable_spent: totalVariableSpent,
+        total_variable_limit: totalVariableLimit,
+        total_expenses: totalExpenses,
+        total_invested: totalInvested,
+        total_saved: totalSaved,
+        net_surplus: netSurplus,
+        savings_rate_percent: totalIncome > 0 ? round2((totalSaved / totalIncome) * 100) : 0,
+      },
+      fixed_allocations: fixedAllocations,
+      variable_allocations: variableAllocations,
+      investments,
+    });
   } catch (err) { next(err); }
 }
 
